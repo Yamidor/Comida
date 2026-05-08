@@ -5,3 +5,7 @@ uploads/
 dist/
 build/
 .DS_Store
+
+# WhatsApp auth and cache
+backend/.wwebjs_auth/
+backend/.wwebjs_cache/

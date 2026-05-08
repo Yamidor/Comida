@@ -61,6 +61,9 @@ app.use((err, req, res, next) => {
 const setupSockets = require('./src/sockets/handlers');
 setupSockets(io);
 
+// Initialize WhatsApp Bot
+require('./src/whatsapp').init(io);
+
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`\n🚀 Araquiu Backend corriendo en http://localhost:${PORT}`);

@@ -51,7 +51,14 @@ export default function MeseroPedidos() {
 
   useEffect(() => {
     socket.connect();
-    socket.emit('join:meseros', { nombre: user?.nombre });
+    
+    socket.on('connect', () => {
+      socket.emit('join:meseros', { nombre: user?.nombre });
+    });
+    // También emitir por si ya está conectado
+    if (socket.connected) {
+      socket.emit('join:meseros', { nombre: user?.nombre });
+    }
 
     socket.on('nuevo:pedido', (pedido) => {
       setPedidos(prev => [pedido, ...prev]);
@@ -68,6 +75,7 @@ export default function MeseroPedidos() {
     });
 
     return () => {
+      socket.off('connect');
       socket.off('nuevo:pedido');
       socket.off('pedido:actualizado');
       socket.disconnect();
@@ -139,6 +147,16 @@ export default function MeseroPedidos() {
                       <span className="text-xs text-cafe/40 bg-crema px-2 py-0.5 rounded-full">
                         {pedido.origen === 'local' ? '🏪 Local' : '🌐 Web'}
                       </span>
+                      {pedido.whatsapp_estado === 'confirmado' && (
+                        <span className="text-xs text-green-700 bg-green-100 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <span className="text-[10px]">💬</span> Confirmado WP
+                        </span>
+                      )}
+                      {pedido.whatsapp_estado === 'esperando_comprobante' && (
+                        <span className="text-xs text-orange-700 bg-orange-100 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <span className="text-[10px]">⏳</span> Esperando Foto
+                        </span>
+                      )}
                     </div>
                     <p className="font-semibold text-cafe">{pedido.cliente_nombre}</p>
                     <p className="text-sm text-cafe/50">{pedido.cliente_telefono}</p>
@@ -170,6 +188,13 @@ export default function MeseroPedidos() {
                 )}
 
                 {/* Acciones */}
+                {pedido.comprobante_url && (
+                  <div className="px-5 py-2 bg-blue-50 border-t border-crema-dark text-center">
+                    <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${pedido.comprobante_url}`} target="_blank" rel="noreferrer" className="text-blue-600 font-bold text-sm hover:underline flex items-center justify-center gap-2">
+                      🧾 Ver Comprobante de Pago
+                    </a>
+                  </div>
+                )}
                 {pedido.estado === 'pendiente' && (
                   <div className="px-5 py-3 flex gap-2 border-t border-crema-dark">
                     <button onClick={() => cambiarEstado(pedido.id, 'aprobado')}

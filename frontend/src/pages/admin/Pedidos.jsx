@@ -124,6 +124,16 @@ export default function AdminPedidos() {
                   </td>
                   <td className="table-cell">
                     <span className={`badge-status ${ESTADO_BADGE[p.estado]}`}>{p.estado}</span>
+                    {p.whatsapp_estado === 'confirmado' && (
+                      <span className="block mt-1 text-[10px] text-green-700 font-bold px-1 py-0.5 bg-green-100 rounded-md w-max">
+                        💬 Confirmado WP
+                      </span>
+                    )}
+                    {p.whatsapp_estado === 'esperando_comprobante' && (
+                      <span className="block mt-1 text-[10px] text-orange-700 font-bold px-1 py-0.5 bg-orange-100 rounded-md w-max">
+                        ⏳ Esperando Foto
+                      </span>
+                    )}
                   </td>
                   <td className="table-cell text-cafe/70">{p.metodo_pago}</td>
                   <td className="table-cell font-bold text-naranja">{fmt(p.total)}</td>
@@ -136,6 +146,9 @@ export default function AdminPedidos() {
                         <button onClick={() => cambiarEstado(p.id, 'aprobado')} className="bg-green-500 text-white px-2 py-1 rounded-lg text-xs font-semibold hover:bg-green-600">✅</button>
                         <button onClick={() => cambiarEstado(p.id, 'rechazado')} className="bg-red-500 text-white px-2 py-1 rounded-lg text-xs font-semibold hover:bg-red-600">❌</button>
                       </>}
+                      {p.comprobante_url && (
+                        <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${p.comprobante_url}`} target="_blank" rel="noreferrer" className="bg-blue-500 text-white px-2 py-1 rounded-lg text-xs font-semibold hover:bg-blue-600">🧾</a>
+                      )}
                       <button onClick={() => verTicket(p.id)} className="bg-cafe text-white px-2 py-1 rounded-lg text-xs font-semibold hover:bg-cafe-medium">🖨️</button>
                     </div>
                   </td>

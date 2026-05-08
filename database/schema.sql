@@ -85,6 +85,8 @@ CREATE TABLE IF NOT EXISTS pedidos (
   lat DECIMAL(10,8),
   lng DECIMAL(11,8),
   total DECIMAL(10,2) NOT NULL DEFAULT 0,
+  comprobante_url VARCHAR(255),
+  whatsapp_estado ENUM('none','esperando_confirmacion','esperando_comprobante','confirmado') DEFAULT 'none',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
   FOREIGN KEY (usuario_id_mesero) REFERENCES usuarios(id) ON DELETE SET NULL

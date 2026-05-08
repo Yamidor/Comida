@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { auth, requireRole } = require('../middleware/auth');
+const whatsapp = require('../whatsapp');
 
 // Función helper para obtener pedido completo
 async function getPedidoCompleto(id) {
@@ -47,7 +48,7 @@ router.get('/', auth, async (req, res) => {
 
     const [rows] = await db.query(`
       SELECT p.id, p.estado, p.total, p.metodo_pago, p.origen, p.created_at,
-             p.direccion_entrega_texto, p.lat, p.lng, p.valor_billete,
+             p.direccion_entrega_texto, p.lat, p.lng, p.valor_billete, p.comprobante_url, p.whatsapp_estado,
              c.nombre AS cliente_nombre, c.telefono AS cliente_telefono,
              u.nombre AS mesero_nombre
       FROM pedidos p
@@ -98,6 +99,17 @@ router.post('/', async (req, res) => {
 
     if (!items || !items.length) return res.status(400).json({ error: 'El pedido no tiene productos' });
 
+    // Validar que el cliente no tenga un pedido activo pendiente o aprobado
+    if (cliente_id) {
+      const [activos] = await db.query(
+        `SELECT id FROM pedidos WHERE cliente_id = ? AND estado IN ('pendiente', 'aprobado') LIMIT 1`,
+        [cliente_id]
+      );
+      if (activos.length) {
+        return res.status(400).json({ error: 'Ya tienes un pedido activo. Debes esperar a que sea despachado o finalizado antes de hacer otro.' });
+      }
+    }
+
     // Calcular total
     let total = 0;
     for (const item of items) {
@@ -105,14 +117,15 @@ router.post('/', async (req, res) => {
     }
 
     const estado = origen === 'local' ? 'aprobado' : 'pendiente';
+    const whatsapp_estado = origen === 'web' ? 'esperando_confirmacion' : 'none';
 
     const [result] = await db.query(`
       INSERT INTO pedidos (cliente_id, usuario_id_mesero, origen, estado, metodo_pago, valor_billete,
-                           direccion_entrega_texto, lat, lng, total)
-      VALUES (?,?,?,?,?,?,?,?,?,?)
+                           direccion_entrega_texto, lat, lng, total, whatsapp_estado)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?)
     `, [cliente_id || null, usuario_id_mesero || null, origen || 'web', estado,
         metodo_pago || 'efectivo', valor_billete || null, direccion_entrega_texto || null,
-        lat || null, lng || null, total]);
+        lat || null, lng || null, total, whatsapp_estado]);
 
     const pedidoId = result.insertId;
 
@@ -135,6 +148,14 @@ router.post('/', async (req, res) => {
       }
     }
 
+    if (origen === 'web' && pedido.cliente_telefono) {
+      let resumen = '';
+      pedido.detalles.forEach(d => {
+        resumen += `- ${d.cantidad}x ${d.producto_nombre}\n`;
+      });
+      whatsapp.enviarMensajeConfirmacion(pedido.cliente_telefono, pedido.cliente_nombre, resumen, new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(total), pedido.metodo_pago);
+    }
+
     res.status(201).json(pedido);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -152,7 +173,17 @@ router.patch('/:id/estado', auth, async (req, res) => {
     if (req.io) {
       req.io.to('meseros').emit('pedido:actualizado', pedido);
       req.io.to(`pedido-${req.params.id}`).emit('pedido:actualizado', pedido);
-      if (estado === 'despachado') req.io.emit('pedido:despachado', pedido);
+      if (estado === 'despachado') {
+        req.io.emit('pedido:despachado', pedido);
+      }
+    }
+    
+    if (estado === 'despachado' && pedido.cliente_telefono) {
+      whatsapp.enviarMensajeDespachado(pedido.cliente_telefono);
+    }
+
+    if (estado === 'aprobado' && pedido.cliente_telefono) {
+      whatsapp.enviarMensajeAprobado(pedido.cliente_telefono);
     }
 
     res.json(pedido);
