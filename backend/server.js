@@ -44,6 +44,7 @@ app.use('/api/clientes', require('./src/routes/clientes'));
 app.use('/api/usuarios', require('./src/routes/usuarios'));
 app.use('/api/pedidos', require('./src/routes/pedidos'));
 app.use('/api/finanzas', require('./src/routes/finanzas'));
+app.use('/api/whatsapp', require('./src/routes/whatsapp'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));

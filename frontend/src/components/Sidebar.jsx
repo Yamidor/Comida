@@ -13,6 +13,7 @@ const adminLinks = [
   { to: '/admin/gastos', icon: '💰', label: 'Gastos' },
   { to: '/admin/nomina', icon: '👷', label: 'Nómina' },
   { to: '/admin/balance', icon: '📈', label: 'Balance' },
+  { to: '/admin/whatsapp', icon: '📱', label: 'WhatsApp' },
 ];
 
 const meseroLinks = [

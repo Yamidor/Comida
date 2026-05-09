@@ -5,6 +5,8 @@ const path = require('path');
 const fs = require('fs');
 
 let ioInstance = null;
+let currentStatus = 'disconnected';
+let currentQr = null;
 
 const client = new Client({
     authStrategy: new LocalAuth(),
@@ -16,21 +18,32 @@ const client = new Client({
 let isReady = false;
 const messageQueue = [];
 
-// Mapa para rastrear chats: cuando enviamos un mensaje a 573042769597@c.us,
-// almacenamos el teléfono del cliente para poder reconocerlo cuando responda
-// desde un chat @lid (formato interno de WhatsApp con dispositivos vinculados)
+// Mapa para rastrear chats
 const chatPhoneMap = new Map(); // chatId (@c.us) -> teléfono
+
+const broadcastStatus = () => {
+    if (ioInstance) {
+        ioInstance.emit('whatsapp:status', { status: currentStatus, qr: currentQr });
+    }
+};
 
 client.on('qr', (qr) => {
     console.log('----------------------------------------------------');
     console.log('¡ATENCIÓN! ESCANEA ESTE CÓDIGO QR CON TU WHATSAPP');
     console.log('----------------------------------------------------');
     qrcode.generate(qr, { small: true });
+    
+    currentStatus = 'qr';
+    currentQr = qr;
+    broadcastStatus();
 });
 
 client.on('ready', async () => {
     console.log('✅ Cliente de WhatsApp listo!');
     isReady = true;
+    currentStatus = 'ready';
+    currentQr = null;
+    broadcastStatus();
     
     // Procesar mensajes encolados mientras arrancaba
     console.log(`[WhatsApp] Procesando ${messageQueue.length} mensajes encolados...`);
@@ -42,15 +55,24 @@ client.on('ready', async () => {
 
 client.on('authenticated', () => {
     console.log('🔐 WhatsApp autenticado correctamente');
+    currentStatus = 'authenticated';
+    currentQr = null;
+    broadcastStatus();
 });
 
 client.on('auth_failure', (msg) => {
     console.error('❌ Error de autenticación WhatsApp:', msg);
+    currentStatus = 'disconnected';
+    currentQr = null;
+    broadcastStatus();
 });
 
 client.on('disconnected', (reason) => {
     console.log('⚠️  WhatsApp desconectado:', reason);
     isReady = false;
+    currentStatus = 'disconnected';
+    currentQr = null;
+    broadcastStatus();
     setTimeout(() => {
         console.log('🔄 Intentando reconectar WhatsApp...');
         client.initialize();
@@ -304,6 +326,35 @@ const enviarMensajeDespachado = async (clienteTelefono) => {
     else await task();
 };
 
+const getStatus = () => {
+    return { status: currentStatus, qr: currentQr };
+};
+
+const logout = async () => {
+    try {
+        await client.destroy();
+    } catch(e) {
+        console.error('Error al destruir cliente:', e);
+    }
+    
+    currentStatus = 'disconnected';
+    currentQr = null;
+    isReady = false;
+    broadcastStatus();
+
+    const authPath = path.join(__dirname, '..', '.wwebjs_auth');
+    if (fs.existsSync(authPath)) {
+        fs.rmSync(authPath, { recursive: true, force: true });
+    }
+
+    // Reiniciar cliente
+    setTimeout(() => {
+        client.initialize();
+    }, 2000);
+    
+    return { success: true };
+};
+
 module.exports = {
     init: (io) => {
         ioInstance = io;
@@ -312,5 +363,7 @@ module.exports = {
     enviarMensajeConfirmacion,
     enviarMensajeAprobado,
     enviarMensajeDespachado,
+    getStatus,
+    logout,
     client
 };

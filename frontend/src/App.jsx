@@ -22,6 +22,7 @@ import Insumos from './pages/admin/Insumos';
 import Gastos from './pages/admin/Gastos';
 import Nomina from './pages/admin/Nomina';
 import Balance from './pages/admin/Balance';
+import Whatsapp from './pages/admin/Whatsapp';
 
 // Mesero
 import MeseroPedidos from './pages/mesero/Pedidos';
@@ -62,6 +63,7 @@ export default function App() {
             <Route path="/admin/gastos" element={<ProtectedRoute role="admin"><Gastos /></ProtectedRoute>} />
             <Route path="/admin/nomina" element={<ProtectedRoute role="admin"><Nomina /></ProtectedRoute>} />
             <Route path="/admin/balance" element={<ProtectedRoute role="admin"><Balance /></ProtectedRoute>} />
+            <Route path="/admin/whatsapp" element={<ProtectedRoute role="admin"><Whatsapp /></ProtectedRoute>} />
 
             {/* Mesero */}
             <Route path="/mesero/pedidos" element={<ProtectedRoute role="mesero"><MeseroPedidos /></ProtectedRoute>} />
